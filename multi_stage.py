@@ -44,9 +44,11 @@ class LLM(nn.Module):
 
         self.prefix = Prefix(model, 3, params.len_prefix)
     
-    def encode(self, input_ids):
+    def encode(self, input_ids, input_mask):
         batch_size = input_ids.shape[0]
         len_prefix = self.params.len_prefix
+        prefix_mask = torch.ones([batch_size, len_prefix])
+        attn_mask = torch.cat([prefix_mask, input_mask], dim=1)
 
         keys, values = self.prefix(batch_size)
         # batch_size, n_prefixes, n_layers, len_prefix, n_heads, head_size => batch_size, n_heads, len_prefix, head_size
@@ -56,14 +58,21 @@ class LLM(nn.Module):
             tup = (keys[:,0,i,:,:,:].permute(0,2,1,3), values[:,0,i,:,:,:].permute(0,2,1,3))
             layer_prefix_list.append(tup)
 
-        outputs = self._model(input_ids, past_key_values=layer_prefix_list, use_cache=True)
+        outputs = self._model(input_ids, past_key_values=layer_prefix_list, attention_mask=attn_mask, use_cache=True)
 
         #RE-ENCODING
         layer_prefix_list = []
+        attn_mask = torch.cat([prefix_mask, input_mask, input_mask], dim=1)
 
-        #not to include encoder prefixes in the re-encoding stage
-        for (key, value) in outputs.past_key_values:
-            layer_prefix_list.append((key[:,:,len_prefix:,:], value[:,:,len_prefix:,:]))
+        #prepend re-encoding prefixes and exclude encoder prefixes in the re-encoding stage
+        for i, (key, value) in enumerate(outputs.past_key_values):
+            k = torch.cat([keys[:,1,i,:,:,:].permute(0,2,1,3), key[:,:,len_prefix:,:]], dim=2)
+            v = torch.cat([values[:,1,i,:,:,:].permute(0,2,1,3), value[:,:,len_prefix:,:]], dim=2)
+            layer_prefix_list.append((k, v))
         
+        outputs = self._model(input_ids, past_key_values=layer_prefix_list, attention_mask=attn_mask, use_cache=True)
 
+        return outputs
+    
+    def decode(self, input_ids, input_mask, target_mask, mode='train'):
         
