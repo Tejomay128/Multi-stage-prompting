@@ -74,6 +74,7 @@ class LLM(nn.Module):
         outputs = self._model(input_ids, past_key_values=layer_prefix_list, attention_mask=attn_mask, use_cache=True)
         layer_prefix_list = []
 
+        #prepare past key values for decoding stage
         for i, (key, value) in outputs.past_key_values:
             k = torch.cat([keys[:,2,i,:,:,:].permute(0,2,1,3), key[:,:,len_prefix + len_sent:,:]], dim=2)
             v = torch.cat([values[:,2,i,:,:,:].permute(0,2,1,3), value[:,:,len_prefix + len_sent:,:]], dim=2)
