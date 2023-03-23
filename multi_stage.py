@@ -96,3 +96,4 @@ class LLM(nn.Module):
         past_key_values = self.encode(input_ids, input_mask)
         logits = self.decode(target_ids, input_mask, target_mask, past_key_values)
         
+        
