@@ -4,11 +4,11 @@ import torch.nn as nn
 
 class Prefix(nn.Module):
     def __init__(self, model, n_prefixes, len_prefix) -> None:
-        super().__init__(Prefix)
+        super(Prefix, self).__init__()
         self._model = model
         self.hidden_size = model.config.hidden_size
         self.embed_size = model.config.hidden_size
-        self.n_layers = model.config.num_decoder_layers
+        self.n_layers = model.config.num_hidden_layers
         self.n_heads = model.config.num_attention_heads
         self.head_size = self.embed_size // self.n_heads 
 
@@ -32,11 +32,11 @@ class Prefix(nn.Module):
 
 class LLM(nn.Module):
     def __init__(self, model, len_prefix) -> None:
-        super().__init__(LLM)
+        super(LLM, self).__init__()
         self._model = model
         self.hidden_size = model.config.hidden_size
         self.embed_size = model.config.hidden_size
-        self.n_layers = model.config.num_decoder_layers
+        self.n_layers = model.config.num_hidden_layers
         self.n_heads = model.config.num_attention_heads
         self.head_size = self.embed_size // self.n_heads
         self.len_prefix = len_prefix

@@ -6,19 +6,18 @@ from transformers import MT5Tokenizer
 def sort_input_by_length(dataset):
     lengths = [(idx, len(line['en'].strip().split())) for idx, line in enumerate(dataset)]
     sorted_lengths = sorted(lengths, key=lambda x: x[1], reverse=True)
-    sorted_dataset = {'en':[], 'hi':[]}
-    for idx,_ in sorted_lengths:
+    sorted_dataset = []
+    for i, (idx,_) in enumerate(sorted_lengths):
         # print(f"En: {dataset[idx]['en']} || Hi: {dataset[idx]['hi']}")
         if dataset[idx]['en'] != '':
-            sorted_dataset['en'].append(dataset[idx]['en'])
-            sorted_dataset['hi'].append(dataset[idx]['hi'])
+            sorted_dataset.append(dataset[idx])
     return sorted_dataset
 
 
 def get_eng_hi_dataset():
     dataset = load_dataset("cfilt/iitb-english-hindi")
     sorted_data = sort_input_by_length(dataset['train']['translation'])
-    return sorted_data
+    return sorted_data, dataset['test']['translation']
 
 
 # pad input ids to make sentence length equal in a batch, make corresponding attention masks
