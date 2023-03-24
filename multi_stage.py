@@ -31,22 +31,22 @@ class Prefix(nn.Module):
     
 
 class LLM(nn.Module):
-    def __init__(self, model, params) -> None:
+    def __init__(self, model, len_prefix) -> None:
         super().__init__(LLM)
-        self.params = params
         self._model = model
-
         self.hidden_size = model.config.hidden_size
         self.embed_size = model.config.hidden_size
         self.n_layers = model.config.num_decoder_layers
         self.n_heads = model.config.num_attention_heads
         self.head_size = self.embed_size // self.n_heads
-
-        self.prefix = Prefix(model, 3, params.len_prefix)
+        self.len_prefix = len_prefix
+        self.prefix = Prefix(model, 3, len_prefix)
+        self.logSoftmax = nn.LogSoftmax(dim=2)
+        self.nll = nn.NLLLoss()
     
     def encode(self, input_ids, input_mask):
         batch_size = input_ids.shape[0]
-        len_prefix = self.params.len_prefix
+        len_prefix = self.len_prefix
         len_sent = input_ids.shape[1]
         prefix_mask = torch.ones([batch_size, len_prefix], device=input_mask.device)
         attn_mask = torch.cat([prefix_mask, input_mask], dim=1)
@@ -84,9 +84,10 @@ class LLM(nn.Module):
     
     def decode(self, target_ids, input_mask, target_mask, past_key_values, mode='train'):
         batch_size = target_ids.shape[0]
-        len_prefix = self.params.len_prefix
+        len_prefix = self.len_prefix
         prefix_mask = torch.ones([batch_size, len_prefix], device=input_mask.device)
 
+        #only attend to decode stage prefixes and re-encoding stage hidden states
         attn_mask = torch.cat([prefix_mask, input_mask, target_mask], dim=1)
 
         outputs = self._model(target_ids, past_key_values=past_key_values, attention_mask=attn_mask, use_cache=True)
@@ -95,5 +96,16 @@ class LLM(nn.Module):
     def forward(self, input_ids, input_mask, target_ids, target_mask):
         past_key_values = self.encode(input_ids, input_mask)
         logits = self.decode(target_ids, input_mask, target_mask, past_key_values)
-        
+
+        # make batch size and sentence length as one dimension
+        logits = self.logSoftmax(logits)
+        logits = logits.view([logits.shape[0] * logits.shape[1], -1])
+        target_ids = target_ids.view([target_ids.shape[0] * target_ids.shape[1], -1])
+        loss = self.nll(logits, target_ids)
+        return loss
+
+    
+    def translate(self):
+        pass
+
         

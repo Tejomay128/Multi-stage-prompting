@@ -4,20 +4,21 @@ from transformers import MT5Tokenizer
 
 # sort the entire corpus based on input length (to minimize padding)
 def sort_input_by_length(dataset):
-    input_data = dataset['en']
-    lengths = [(idx, len(line.strip().split())) for idx, line in enumerate(input_data)]
+    lengths = [(idx, len(line['en'].strip().split())) for idx, line in enumerate(dataset)]
     sorted_lengths = sorted(lengths, key=lambda x: x[1], reverse=True)
     sorted_dataset = {'en':[], 'hi':[]}
-    for idx,_ in lengths:
-        sorted_dataset['en'].append(dataset['en'][idx])
-        sorted_dataset['hi'].append(dataset['hi'][idx])
+    for idx,_ in sorted_lengths:
+        # print(f"En: {dataset[idx]['en']} || Hi: {dataset[idx]['hi']}")
+        if dataset[idx]['en'] != '':
+            sorted_dataset['en'].append(dataset[idx]['en'])
+            sorted_dataset['hi'].append(dataset[idx]['hi'])
     return sorted_dataset
 
 
 def get_eng_hi_dataset():
     dataset = load_dataset("cfilt/iitb-english-hindi")
-    sorted_input_data = sort_input_by_length(dataset)
-    return sorted_input_data
+    sorted_data = sort_input_by_length(dataset['train']['translation'])
+    return sorted_data
 
 
 # pad input ids to make sentence length equal in a batch, make corresponding attention masks
