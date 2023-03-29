@@ -31,16 +31,13 @@ def filter_dataset(tokenizer, token_limit, len_prefix, dataset, lang1='en', lang
     return new_dataset
 
 
-def get_eng_hi_dataset(val_split=0.8):
+def get_eng_hi_dataset():
     dataset = load_dataset("cfilt/iitb-english-hindi")
     # train_data = filter_dataset(tokenizer, token_limit, len_prefix, dataset['train']['translation'])
     # test_data =filter_dataset(tokenizer, token_limit, len_prefix, dataset['test']['translation'])
     train_data = dataset['train']['translation']
+    val_data = dataset['validation']['translation']
     test_data = dataset['test']['translation']
-
-    split_idx = int(len(train_data) * val_split)
-    val_data = train_data[split_idx:]
-    train_data = train_data[:split_idx]
 
     train_data = sort_input_by_length(train_data)
     val_data = sort_input_by_length(val_data)

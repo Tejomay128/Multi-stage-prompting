@@ -131,6 +131,31 @@ class LLM(nn.Module):
         return loss
 
     @torch.no_grad()
+    def greedy_translate(self, device, tokenizer, input_sent):
+        tok_output = tokenizer(input_sent)
+        input_ids = tok_output['input_ids']
+        input_mask = tok_output['attention_mask']
+        input_ids = torch.tensor(input_ids, device=device)
+        input_mask = torch.tensor(input_mask, device=device)
+        target_mask = torch.ones([1, 1], device=device)
+        past_key_values = self.encode(input_ids, input_mask)
+        
+        start = '</s>'
+        gen = []
+        curr_token = None
+        while curr_token != 1:
+            tgt = torch.tensor(tokenizer(start)['input_ids'], device=device)    
+            logits, past_key_values = self.decode(tgt, input_mask, target_mask, past_key_values)
+#             logits = self.logSoftmax(logits.unsqueeze(0)).squeeze(0)
+            value, index = torch.max(logits, dim=1)
+            curr_token = index[0].item()
+            gen.append(curr_token)
+            target_mask = torch.cat([target_mask, torch.ones([1, 1], device=device)], dim=1)
+        output_sent = tokenizer.decode(gen)
+        return output_sent
+            
+    
+    @torch.no_grad()
     def translate(self, device, tokenizer, input_sent, beam_width = 4, token_limit=1024):
         tok_output = tokenizer(input_sent)
         input_ids = tok_output['input_ids']
