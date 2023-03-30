@@ -55,8 +55,8 @@ class LLM(nn.Module):
         len_sent = input_ids.shape[1]
         prefix_mask = torch.ones([batch_size, len_prefix], device=input_mask.device)
         attn_mask = torch.cat([prefix_mask, input_mask], dim=1)
-        pos_ids = torch.arange(0, input_ids.shape[-1], dtype=torch.long, device=input_mask.device)
-        pos_ids = pos_ids.unsqueeze(0).view(-1, input_ids.shape[-1])
+#         pos_ids = torch.arange(0, input_ids.shape[-1], dtype=torch.long, device=input_mask.device)
+#         pos_ids = pos_ids.unsqueeze(0).view(-1, input_ids.shape[-1])
 
         keys, values = self.prefix(batch_size)
         # batch_size, n_prefixes, n_layers, len_prefix, n_heads, head_size => batch_size, n_heads, len_prefix, head_size
@@ -68,15 +68,14 @@ class LLM(nn.Module):
 
         outputs = self._model(input_ids, 
                               past_key_values=layer_prefix_list, 
-                              attention_mask=attn_mask, 
-                              position_ids=pos_ids, 
+                              attention_mask=attn_mask,  
                               use_cache=True)
 
         #RE-ENCODING
         layer_prefix_list = []
         attn_mask = torch.cat([prefix_mask, input_mask, input_mask], dim=1)
-        pos_ids = torch.arange(0, input_ids.shape[-1], dtype=torch.long, device=input_mask.device)
-        pos_ids = pos_ids.unsqueeze(0).view(-1, input_ids.shape[-1])
+#         pos_ids = torch.arange(0, input_ids.shape[-1], dtype=torch.long, device=input_mask.device)
+#         pos_ids = pos_ids.unsqueeze(0).view(-1, input_ids.shape[-1])
 
         #prepend re-encoding prefixes and exclude encoder prefixes in the re-encoding stage
         for i, (key, value) in enumerate(outputs.past_key_values):
@@ -87,7 +86,6 @@ class LLM(nn.Module):
         outputs = self._model(input_ids, 
                               past_key_values=layer_prefix_list, 
                               attention_mask=attn_mask, 
-                              position_ids=pos_ids, 
                               use_cache=True)
         layer_prefix_list = []
 
@@ -106,13 +104,12 @@ class LLM(nn.Module):
 
         #only attend to decode stage prefixes and re-encoding stage hidden states
         attn_mask = torch.cat([prefix_mask, input_mask, target_mask], dim=1)
-        pos_ids = torch.arange(0, target_ids.shape[-1], dtype=torch.long, device=input_mask.device)
-        pos_ids = pos_ids.unsqueeze(0).view(-1, target_ids.shape[-1])
+#         pos_ids = torch.arange(0, target_ids.shape[-1], dtype=torch.long, device=input_mask.device)
+#         pos_ids = pos_ids.unsqueeze(0).view(-1, target_ids.shape[-1])
 
         outputs = self._model(target_ids, 
                               past_key_values=past_key_values, 
-                              attention_mask=attn_mask, 
-                              position_ids=pos_ids, 
+                              attention_mask=attn_mask,  
                               use_cache=True)
         return outputs.logits, outputs.past_key_values
     
@@ -125,9 +122,12 @@ class LLM(nn.Module):
 
         # make batch size and sentence length as one dimension
         logits = self.logSoftmax(logits)
-        logits = logits.view([logits.shape[0] * logits.shape[1], -1])
+        logits = logits.reshape([logits.shape[0] * logits.shape[1], -1])
+        target_mask = target_mask.reshape([target_mask.shape[0] * target_mask.shape[1],])
         labels = labels.flatten()
-        loss = self.nll(logits, labels)
+        loss = -logits[torch.arange(logits.shape[0], device=labels.device), labels]
+#         print(loss.shape, target_mask.shape)
+        loss = torch.sum(loss * target_mask) / torch.sum(target_mask)
         return loss
 
     @torch.no_grad()
