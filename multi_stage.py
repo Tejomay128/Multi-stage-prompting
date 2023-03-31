@@ -121,11 +121,11 @@ class LLM(nn.Module):
         logits,_ = self.decode(target_ids, input_mask, target_mask, past_key_values)
 
         # make batch size and sentence length as one dimension
-        logits = self.logSoftmax(logits)
-        logits = logits.reshape([logits.shape[0] * logits.shape[1], -1])
+        logprobs = self.logSoftmax(logits)
+        logprobs = logprobs.reshape([logprobs.shape[0] * logprobs.shape[1], -1])
         target_mask = target_mask.reshape([target_mask.shape[0] * target_mask.shape[1],])
         labels = labels.flatten()
-        loss = -logits[torch.arange(logits.shape[0], device=labels.device), labels]
+        loss = -logprobs[torch.arange(logprobs.shape[0], device=labels.device), labels]
 #         print(loss.shape, target_mask.shape)
         loss = torch.sum(loss * target_mask) / torch.sum(target_mask)
         return loss
