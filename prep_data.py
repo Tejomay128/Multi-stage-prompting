@@ -35,12 +35,10 @@ def get_eng_hi_dataset():
     dataset = load_dataset("cfilt/iitb-english-hindi")
     # train_data = filter_dataset(tokenizer, token_limit, len_prefix, dataset['train']['translation'])
     # test_data =filter_dataset(tokenizer, token_limit, len_prefix, dataset['test']['translation'])
-    train_data = dataset['train']['translation']
     val_data = dataset['validation']['translation']
     test_data = dataset['test']['translation']
 
-    train_data = sort_input_by_length(train_data)
     val_data = sort_input_by_length(val_data)
     test_data = sort_input_by_length(test_data)
 
-    return train_data, val_data, test_data
+    return val_data, test_data
