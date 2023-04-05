@@ -3,13 +3,12 @@ import torch.nn as nn
 
 
 class Prefix(nn.Module):
-    def __init__(self, model, n_prefixes, len_prefix) -> None:
+    def __init__(self, config, n_prefixes, len_prefix) -> None:
         super(Prefix, self).__init__()
-        self._model = model
-        self.hidden_size = model.config.hidden_size
-        self.embed_size = model.config.hidden_size
-        self.n_layers = model.config.num_hidden_layers
-        self.n_heads = model.config.num_attention_heads
+        self.hidden_size = config.hidden_size
+        self.embed_size = config.hidden_size
+        self.n_layers = config.num_hidden_layers
+        self.n_heads = config.num_attention_heads
         self.head_size = self.embed_size // self.n_heads 
 
         self.reparams = nn.Parameter(torch.ones(len_prefix))   
@@ -43,10 +42,13 @@ class LLM(nn.Module):
         self.head_size = self.embed_size // self.n_heads
         self.len_prefix = len_prefix
 
-        self.prefix = Prefix(model, 3, len_prefix)
+        self.prefix = Prefix(model.config, 3, len_prefix)
         self.logSoftmax = nn.LogSoftmax(dim=2)
         self.logSoftmax_1 = nn.LogSoftmax(dim=1)
         self.nll = nn.NLLLoss()
+        
+        for param in self._model.parameters():
+            param.requires_grad_(False)
 
 
     def encode(self, input_ids, input_mask):
